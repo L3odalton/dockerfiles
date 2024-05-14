@@ -1,0 +1,114 @@
+---
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - vpn_net
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 8080:8080 # sabnzbd
+      - 9090:9090 # sabnzbd
+    volumes:
+      - /docker/appdata/gluetun:/gluetun
+    environment:
+      - VPN_SERVICE_PROVIDER=mullvad
+      - VPN_TYPE=
+      - WIREGUARD_PRIVATE_KEY=
+      - WIREGUARD_ADDRESSES=
+      - SERVER_CITIES=
+
+  radarr:
+    image: ghcr.io/hotio/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    networks:
+      - vpn_net
+    ports:
+      - 7878:7878 # radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/radarr:/config
+      - /mnt/data:/data
+
+  sonarr:
+    image: ghcr.io/hotio/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    networks:
+      - vpn_net
+    ports:
+      - 8989:8989 # sonarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/sonarr:/config
+      - /mnt/data:/data
+
+  sabnzbd:
+    image: ghcr.io/hotio/sabnzbd:latest
+    container_name: sabnzbd
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/sabnzbd:/config
+      - /mnt/data/usenet:/data/usenet:rw
+    network_mode: "service:gluetun"
+
+  prowlarr:
+    container_name: prowlarr
+    image: ghcr.io/hotio/prowlarr
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    networks:
+      - vpn_net
+    ports:
+      - 9696:9696 # prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /docker/appdata/prowlarr:/config
+
+  umlautadapterr:
+    container_name: umlautadaptarr
+    image: pcjones/umlautadaptarr:latest
+    restart: unless-stopped
+    networks:
+      - vpn_net
+    environment:
+      - TZ=Europe/Berlin
+      - SONARR__ENABLED=true
+      - SONARR__HOST=http://localhost:8989
+      - SONARR__APIKEY=
+      - RADARR__ENABLED=true
+      - RADARR__HOST=http://localhost:7878
+      - RADARR__APIKEY=     
+
+networks:
+  vpn_net:
+    external: true
